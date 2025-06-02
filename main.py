@@ -7,18 +7,18 @@ from sklearn.compose import ColumnTransformer
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from imblearn.over_sampling import SMOTE
 import joblib
+from sklearn.metrics import f1_score, accuracy_score, classification_report, confusion_matrix
 import numpy as np
-import pymysql
 import os 
 
 def carregar_dados():
     host = 'localhost' #HOST LOCAL
     user = 'root' #USUARIO 
-    password = 'rootroot' #SENHA 
-    database = 'statlog' #DATABASE 
+    password = '1212' #SENHA 
+    database = 'ag2_germancard' #DATABASE 
     connection_string = f"mysql+pymysql://{user}:{password}@{host}/{database}"
     engine = create_engine(connection_string)
-    query = "SELECT * FROM germancredit" #Tabela criada 
+    query = "SELECT * FROM southgermancredit" #Tabela criada 
     df = pd.read_sql(query, engine)
     return df
 
@@ -66,17 +66,29 @@ def treinar_modelo(df, preprocessor):
 
     modelo = Perceptron(random_state=42, max_iter=2000, eta0=0.01)
     modelo.fit(X_train_bal, y_train_bal)
-
+    X_test_transf = preprocessor.transform(X_test)
+    y_scores = modelo.decision_function(X_test_transf)
+    
+    best_thresh = None
+    best_f1 = 0
+    for thresh in np.arange(-2, 2, 0.05):
+        y_pred = (y_scores > thresh).astype(int)
+        f1 = f1_score(y_test, y_pred, pos_label=0)  
+        if f1 > best_f1:
+            best_f1 = f1
+            best_thresh = thresh
+ 
+    # Salva modelo, preprocessador E o limiar ajustado
     with open('modelo_perceptron.pkl', 'wb') as f:
-        joblib.dump(modelo, f, protocol=4)
+        joblib.dump({'modelo': modelo, 'limiar': best_thresh}, f, protocol=4)
+    
     with open('preprocessador.pkl', 'wb') as f:
         joblib.dump(preprocessor, f, protocol=4)
 
-    X_test_transf = preprocessor.transform(X_test)
-    y_scores = modelo.decision_function(X_test_transf)
-    limiar = -0.3
-    y_pred = (y_scores > limiar).astype(int)
+    # Usa o melhor limiar para avaliação final
+    y_pred = (y_scores > best_thresh).astype(int)
 
+    #print(f"\nMelhor limiar encontrado: {best_thresh:.2f}")
     print("\nMétricas de Avaliação (com limiar ajustado):")
     print(f"Acurácia: {accuracy_score(y_test, y_pred):.2f}")
     print("\nRelatório de Classificação:")
@@ -95,11 +107,14 @@ def get_valid_input(prompt, valid_values=None, value_type=int):
         except ValueError:
             print("Por favor, insira um valor válido!")
 
-def classificar_novo_dado():
-    perceptron = joblib.load("modelo_perceptron.pkl")
-    preprocessor = joblib.load("preprocessador.pkl")
-    limiar = -0.3
+def classificar_novo_dado(new_data):
+    # Carrega o dicionário salvo: {'modelo': perceptron, 'limiar': best_thresh}
+    modelo_data = joblib.load("modelo_perceptron.pkl")
+    perceptron = modelo_data['modelo']
+    limiar = modelo_data['limiar']  # Usa o limiar ótimo salvo
 
+    preprocessor = joblib.load("preprocessador.pkl")
+    
     print("\nInsira os dados para classificação:")
     duration = get_valid_input("Duração do crédito (meses) [duration]: ")
     amount = get_valid_input("Valor do crédito [amount]: ")
@@ -141,6 +156,9 @@ def classificar_novo_dado():
     print("\nResultado da Classificação:")
     print(f"Risco de Crédito: {'Bom' if prediction[0] == 1 else 'Ruim'}")
     print(f"Score (distância da fronteira de decisão): {score[0]:.2f}")
+    print(f"Limiar utilizado: {limiar:.2f}")
+
+    return prediction
 
 
 
