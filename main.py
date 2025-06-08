@@ -10,6 +10,7 @@ import joblib
 from sklearn.metrics import f1_score, accuracy_score, classification_report, confusion_matrix
 import numpy as np
 import os 
+from typing import Optional
 
 def carregar_dados():
     host = 'localhost' #HOST LOCAL
@@ -88,9 +89,9 @@ def treinar_modelo(df, preprocessor):
     # Usa o melhor limiar para avaliação final
     y_pred = (y_scores > best_thresh).astype(int)
 
-    #print(f"\nMelhor limiar encontrado: {best_thresh:.2f}")
     print("\nMétricas de Avaliação (com limiar ajustado):")
     print(f"Acurácia: {accuracy_score(y_test, y_pred):.2f}")
+    print(f"\nMelhor limiar encontrado: {best_thresh:.2f}")
     print("\nRelatório de Classificação:")
     print(classification_report(y_test, y_pred))
     print("\nMatriz de Confusão:")
@@ -107,7 +108,7 @@ def get_valid_input(prompt, valid_values=None, value_type=int):
         except ValueError:
             print("Por favor, insira um valor válido!")
 
-def classificar_novo_dado(new_data):
+def classificar_novo_dado(new_data: Optional[pd.DataFrame] = None):
     # Carrega o dicionário salvo: {'modelo': perceptron, 'limiar': best_thresh}
     modelo_data = joblib.load("modelo_perceptron.pkl")
     perceptron = modelo_data['modelo']
