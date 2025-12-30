@@ -1,4 +1,4 @@
-# Classificador de Risco de Crédito — README
+# Classificador de Risco de Crédito
 
 Este projeto implementa um classificador de risco de crédito usando Perceptron, com pipeline de pré-processamento, balanceamento de classes e ajuste de limiar, baseado no South German Credit Data.
 
